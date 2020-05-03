@@ -1,41 +1,55 @@
-{-# LANGUAGE PatternGuards #-}
 module Main where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
-import Data.Maybe (maybe)
+
+import Logic
+import Coord
+import Tetro
+import Piece
+import Draw
+
+
+metrics :: Metrics
+metrics = Metrics
+  { screenWidth = 400
+  , screenHeight = 800
+  , blockSize = 32
+  , boardOffset = (0, 0)
+  , vanishZoneHeight = 0
+  , gutter = 0.125
+  }
 
 main :: IO ()
-main = do 
-  let state = State Nothing []
-  play  (InWindow "Draw" (600, 600) (0, 0))
-        white 100 state
-        makePicture handleEvent stepWorld
+main = play  
+  (InWindow "Draw" (screenWidth metrics, screenHeight metrics) (0, 0))
+  black 
+  60 
+  (initState 10 24 $ cycle [0..6])
+  (draw metrics) 
+  onEvent 
+  step
+        
+onEvent :: Event -> State -> State
+onEvent event state
+  | EventKey (Char 'h') Down _ _ <- event
+  , State b (Playing (Fall p) t) _ <- state
+  , Just p' <- maybeMovePiece b West p
+  = state { getMode = Playing (Fall p') t }
 
-data State = State (Maybe Path) [Picture]
+  | EventKey (Char 'l') Down _ _ <- event
+  , State b (Playing (Fall p) t) _ <- state
+  , Just p' <- maybeMovePiece b East p
+  = state { getMode = Playing (Fall p') t }
 
-type Segment = ((Float, Float), (Float, Float))
+  | EventKey (Char 'j') Down _ _ <- event
+  , State b (Playing (Fall p) t) _ <- state
+  , Just p' <- maybeRotatePiece b CCW p
+  = state { getMode = Playing (Fall p') t }
 
-makePicture :: State -> Picture
-makePicture (State m xs) = Pictures (maybe xs (\x -> Line x : xs) m)
-
-handleEvent :: Event -> State -> State
-handleEvent event state
-  | EventMotion (x, y) <- event
-  , State (Just ps) ss  <- state
-  = State (Just ((x, y):ps)) ss
-
-  | EventKey (MouseButton LeftButton) Down _ pt@(x,y) <- event
-  , State Nothing ss <- state
-  = State (Just [pt]) 
-          ((Translate x y $ Scale 0.1 0.1 $ Text "Down") : ss)
-
-  | EventKey (MouseButton LeftButton) Up _ pt@(x,y) <- event
-  , State (Just ps) ss <- state
-  = State Nothing
-          ((Translate x y $ Scale 0.1 0.1 $ Text "Up") : Line (pt:ps) : ss)
+  | EventKey (Char 'k') Down _ _ <- event
+  , State b (Playing (Fall p) t) _ <- state
+  , Just p' <- maybeRotatePiece b CW p
+  = state { getMode = Playing (Fall p') t }
 
   | otherwise = state
-
-stepWorld :: Float -> State -> State
-stepWorld _ = id

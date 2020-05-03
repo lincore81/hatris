@@ -1,61 +1,58 @@
 module Board where
 
-import Data.Maybe (isNothing)
-import Data.List (replicate)
-import Tetro (Tetro, Rotation, points)
-import Misc (Point, Direction, fromDirection, addPoints)
-
+import Data.Maybe (isNothing, isJust, maybe)
+import Data.List (replicate, partition)
+import Tetro (Tetro, Rotation)
+import Coord (WorldCoords (WorldCoords), Coord, addCoords)
+import Misc
 
 type Cell = Maybe Tetro
-type Board = [[Cell]]
+newtype Board = Board { unBoard :: [[Cell]] } deriving (Eq)
+
+instance Show Board where
+  show = unlines . map (map f) . unBoard
+    where f Nothing  = '.'
+          f (Just x) = head $ show x
 
 mkBoard :: Int -> Int -> Board
-mkBoard w h = replicate h $ replicate w Nothing
+mkBoard w h = Board . replicate h $ replicate w Nothing
 
-showBoard :: Board -> String
-showBoard = unlines . map (map f) 
-  where f Nothing  = '.'
-        f (Just x) = head $ show x
+getCell :: Board -> Coord -> Maybe Cell
+getCell b (x, y) = nth y (unBoard b) >>= nth x
 
-getCell :: Board -> Point -> Cell
-getCell bs (x, y) = bs !! y !! x
+allEmpty :: Board -> WorldCoords -> Bool
+allEmpty b (WorldCoords xs) = all empty $ getCell b <$> xs
+  where empty (Just Nothing) = True
+        empty _ = False
 
-inBounds :: Board -> Point -> Bool
-inBounds bs (x, y) = and [ y >= 0
-                         , x >= 0
-                         , y < length bs
-                         , (x <) . length $ head bs
-                         ]
 
-offsetPiece :: Point -> [Point] -> [Point]
-offsetPiece (px, py) = fmap (\(x, y) -> (px+x, py+y))
-
-canFitPiece :: Board -> [Point] -> Bool
-canFitPiece bs = all (\p -> inBounds bs p && isNothing (getCell bs p))
- 
-tryTetro :: Board -> Point -> Tetro -> Rotation -> Bool
-tryTetro b pos t r = canFitPiece b . offsetPiece pos $ points t r
-
--- Put a tetromino on the board if it is in bounds
--- assumes the given points have been translated
-settlePiece :: Board -> [Point] -> Tetro -> Board
-settlePiece bs ps t = updateRow <$> zip [0..] bs
-    where updateRow (y, rs) = updateCell <$> zip [0..] rs
-            where updateCell (x, m) = if (x, y) `elem` ps
+-- Put a tetro on the board at the given coords.
+-- Coords not in bounds are ignored.
+putCells :: Board -> WorldCoords -> Tetro -> Board
+putCells b (WorldCoords cs) t = Board . indexedMap updateRow $ unBoard b
+  where updateRow (y, rs) = indexedMap updateCell rs
+            where updateCell (x, m) = if (x, y) `elem` cs
                                       then Just t
                                       else m
 
-movePiece :: Board -> Point -> [Point] -> Direction -> Maybe Point
-movePiece bs p ps d = 
-  if canFitPiece bs ps
-  then Just p'
-  else Nothing
-  where p' = addPoints p $ fromDirection d                         
+findFullRows :: Board -> [Int]
+findFullRows = fmap fst 
+             . filter (all isJust . snd) 
+             . zip [0..]
+             . unBoard
 
-clearRow :: Board -> Int -> Board
-clearRow bs n = f <$> zip [0..] bs
-  where f (y, r) = if y == n 
-                   then Nothing <$ r 
-                   else r
+clearRows :: [Int] -> Board -> Board
+clearRows ys = Board . fmap clear . zip [0..] . unBoard
+  where clear (y, row) = if y `elem` ys
+                         then Nothing <$ row
+                         else row
+
+-- | Remove all empty rows and put them on 'top' of the board 
+collapse :: Board -> Board
+collapse = Board 
+         . uncurry mappend 
+         . partition (all isNothing) 
+         . unBoard
+
 
 

@@ -1,6 +1,7 @@
+{-# OPTIONS_GHC -F -pgmF hspec-discover #-}
 module Main where
 import Test.Hspec
-import Misc (addPoints)
+import Point
 
 
 main :: IO ()

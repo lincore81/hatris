@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e0f055a63ff276cdf0dd1d7a7b7c06f537815dd523c579d68eef4f176d45d3f3
+-- hash: 79122e2c142e3e5c24b9894f7ee1b4b945ac3a522880aa465a53ed7dd3fb4b54
 
 name:           tetris
 version:        0.1.0.0
@@ -27,11 +27,15 @@ source-repository head
 
 library
   exposed-modules:
-      Action
       Board
+      Coord
+      Draw
+      Level
+      Logic
       Misc
-      State
+      Piece
       Tetro
+      Timer
   other-modules:
       Paths_tetris
   hs-source-dirs:
@@ -60,9 +64,10 @@ executable tetris-exe
 
 test-suite tetris-test
   type: exitcode-stdio-1.0
-  main-is: Main.hs
+  main-is: Spec.hs
   other-modules:
-      Board
+      BoardSpec
+      MiscSpec
       Paths_tetris
   hs-source-dirs:
       test
